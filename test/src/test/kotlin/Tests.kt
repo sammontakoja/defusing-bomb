@@ -1,5 +1,3 @@
-package fi.op.lopoc.los.tests
-
 import jodd.http.HttpRequest
 import jodd.http.HttpResponse
 import org.junit.jupiter.api.Assertions.assertEquals
