@@ -1,5 +1,9 @@
 # defusing-bomb
 
+Show how different stacks can be used and tested together.
+
+## Specs
+
 Bomb start to tick after it's initiated with phone call.
 
 Bomb disarmed when wires are cut in following order: green, yellow and blue.
@@ -10,15 +14,13 @@ Bomb explode
     when blue wire is cut first.
     when green wire is cut first and then blue.
 
-After bomb is disarmed
-    it wont explode after two seconds
-    it won't hurt if wires are cut again.
-
 
 ## Modules
 
-Module rest-api provide end points for activating and disarming bomb.
+Module rest-api provide end points for activating and disarming bomb. Implemented with C#.
 
-Module database contains data for module rest-api.
+Module database contains data for module rest-api. Implemented with Microsoft SQL Server.
 
-Module test verify rest-api end points works as expected.
+Module test verify rest-api end points works as expected. Implemented with Kotlin, JUnit5 and Test Container.
+
+Each module produce Docker image so the whole stack could be tested in any environment with docker engine.
