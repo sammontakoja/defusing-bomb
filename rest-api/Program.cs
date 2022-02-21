@@ -9,17 +9,8 @@ var app = builder.Build();
 
 var detonationTimeInSeconds = 2;
 
-app.MapGet("/bombs", async (BombDb db) =>
-    await db.Bombs.ToListAsync());
-
 app.MapGet("/bombs/detonated", async (BombDb db) =>
     await db.Bombs.Where(t => t.IsDetonated).ToListAsync());
-
-app.MapGet("/bombs/{id}", async (int id, BombDb db) =>
-    await db.Bombs.FindAsync(id)
-        is Bomb bomb
-        ? Results.Ok(bomb)
-        : Results.NotFound());
 
 app.MapPost("/bombs/phonenumber/{phonenumber}", async (String phonenumber, BombDb db) =>
 {
@@ -108,31 +99,6 @@ List<Bomb> fetchBombsWithId(int id, BombDb db)
 {
     return db.Bombs.Where(t => t.Id.Equals(id)).ToList();
 }
-
-app.MapPut("/bombs/{id}", async (int id, Bomb inputBomb, BombDb db) =>
-{
-    var bomb = await db.Bombs.FindAsync(id);
-
-    if (bomb is null) return Results.NotFound();
-
-    bomb.IsDetonated = inputBomb.IsDetonated;
-
-    await db.SaveChangesAsync();
-
-    return Results.NoContent();
-});
-
-app.MapDelete("/bombs/{id}", async (int id, BombDb db) =>
-{
-    if (await db.Bombs.FindAsync(id) is Bomb bomb)
-    {
-        db.Bombs.Remove(bomb);
-        await db.SaveChangesAsync();
-        return Results.Ok(bomb);
-    }
-
-    return Results.NotFound();
-});
 
 app.Run();
 
