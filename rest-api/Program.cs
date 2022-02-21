@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<BombDb>(opt => opt.UseInMemoryDatabase("Bombs"));
@@ -29,7 +28,8 @@ app.MapPost("/bombs/phonenumber/{phonenumber}", async (String phonenumber, BombD
         Id = Random.Shared.Next(),
         PhoneNumber = phonenumber,
         IsDetonated = false,
-        DetonationTime = null
+        DetonationTime = null,
+        WiresCut = ""
     };
 
     db.Bombs.Add(bomb);
@@ -40,7 +40,7 @@ app.MapPost("/bombs/phonenumber/{phonenumber}", async (String phonenumber, BombD
 
 app.MapPut("/bombs/ignite/{phonenumber}", async (String phonenumber, BombDb db) =>
 {
-    var searchedBombs = fetchBombs(phonenumber, db);
+    var searchedBombs = fetchBombsWithPhoneNumber(phonenumber, db);
     var foundBomb = searchedBombs[0];
     foundBomb.DetonationTime = DateTime.Now.AddSeconds(detonationTimeInSeconds);
     db.Bombs.Update(foundBomb);
@@ -55,7 +55,7 @@ app.MapPut("/bombs/ignite/{phonenumber}", async (String phonenumber, BombDb db) 
         {
             var db2 = scope.ServiceProvider.GetRequiredService<BombDb>();
             db2.Database.EnsureCreated();
-            var bombsBeforeDetonation = fetchBombs(phonenumber, db2);
+            var bombsBeforeDetonation = fetchBombsWithPhoneNumber(phonenumber, db2);
             var bombToBeDetonated = bombsBeforeDetonation[0];
             bombToBeDetonated.IsDetonated = true;
             db2.Bombs.Update(bombToBeDetonated);
@@ -67,9 +67,46 @@ app.MapPut("/bombs/ignite/{phonenumber}", async (String phonenumber, BombDb db) 
     return Results.Ok(foundBomb);
 });
 
-List<Bomb> fetchBombs(String phoneNumber, BombDb db)
+app.MapPut("/bombs/{id}/cutwire/{colour}", async (int id, String colour, BombDb db) =>
+{
+    var searchedBombs = fetchBombsWithId(id, db);
+    var foundBomb = searchedBombs[0];
+
+    var expectedColourFound = 
+        colour == "yellow" ||
+        colour == "green" ||
+        colour == "blue";
+    
+    if (expectedColourFound) {
+        if (foundBomb.WiresCut.Length == 0 && (colour == "yellow" || colour == "blue")) {
+            foundBomb.IsDetonated = true;
+            db.Bombs.Update(foundBomb);
+            await db.SaveChangesAsync();
+            return Results.Ok("Kaboom!");    
+        }
+        if (foundBomb.WiresCut.Contains("green") && !foundBomb.WiresCut.Contains("yellow") && colour == "blue") {
+            foundBomb.IsDetonated = true;
+            db.Bombs.Update(foundBomb);
+            await db.SaveChangesAsync();
+            return Results.Ok("Kaboom!");    
+        }
+        foundBomb.WiresCut += colour;
+        db.Bombs.Update(foundBomb);
+        await db.SaveChangesAsync();
+        return Results.Ok("OK!");
+    }
+
+    return Results.BadRequest();
+});
+
+List<Bomb> fetchBombsWithPhoneNumber(String phoneNumber, BombDb db)
 {
     return db.Bombs.Where(t => t.PhoneNumber.Equals(phoneNumber)).ToList();
+}
+
+List<Bomb> fetchBombsWithId(int id, BombDb db)
+{
+    return db.Bombs.Where(t => t.Id.Equals(id)).ToList();
 }
 
 app.MapPut("/bombs/{id}", async (int id, Bomb inputBomb, BombDb db) =>
@@ -97,14 +134,13 @@ app.MapDelete("/bombs/{id}", async (int id, BombDb db) =>
     return Results.NotFound();
 });
 
-
-
 app.Run();
 
 class Bomb
 {
     public int Id { get; set; }
     public string PhoneNumber { get; set; }
+    public string WiresCut { get; set; }
     public bool IsDetonated { get; set; }
     [JsonConverter(typeof(UnixDateTimeConverter))]
     public DateTime? DetonationTime { get; set; }

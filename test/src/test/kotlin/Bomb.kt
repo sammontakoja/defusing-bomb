@@ -9,7 +9,8 @@ data class Bomb(
         val isDetonated: Boolean,
         val phoneNumber: String,
         @JsonDeserialize(converter = LongToLocalDateTimeConverter::class)
-        val detonationTime: LocalDateTime?
+        val detonationTime: LocalDateTime?,
+        val wiresCut: String
 )
 
 class LongToLocalDateTimeConverter : StdConverter<Long, LocalDateTime>() {

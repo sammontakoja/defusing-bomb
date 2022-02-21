@@ -2,7 +2,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import jodd.http.HttpRequest
 import jodd.http.HttpResponse
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
@@ -14,13 +14,10 @@ class Tests {
     @Test
     fun `Bomb created with given phone number`() {
         val phoneNumber = randomPhoneNumber()
-        val response = createNewBombCall(phoneNumber)
-        println(response)
-        assertEquals(201, response.statusCode())
-        val bomb: Bomb = jacksonObjectMapper().readValue(response.bodyText())
-        assertEquals(false, bomb.isDetonated)
-        assertEquals(phoneNumber, bomb.phoneNumber)
-        assertEquals(null, bomb.detonationTime)
+        val createdBomb = createNewBomb(phoneNumber)
+        assertEquals(false, createdBomb.isDetonated)
+        assertEquals(phoneNumber, createdBomb.phoneNumber)
+        assertEquals(null, createdBomb.detonationTime)
     }
 
     @Test
@@ -28,7 +25,7 @@ class Tests {
         val phoneNumber = randomPhoneNumber()
         createNewBombCall(phoneNumber)
 
-        val ignitionCallResponse = bombIgnitionCall(phoneNumber)
+        val ignitionCallResponse = detonationCall(phoneNumber)
         val bomb: Bomb = jacksonObjectMapper().readValue(ignitionCallResponse.bodyText())
 
         if (bomb.detonationTime != null) {
@@ -50,7 +47,7 @@ class Tests {
     fun `Bomb detonated 2100 milliseconds after ignition call`() {
         val phoneNumber = randomPhoneNumber()
         createNewBombCall(phoneNumber)
-        bombIgnitionCall(phoneNumber)
+        detonationCall(phoneNumber)
 
         Thread.sleep(2100)
 
@@ -69,24 +66,75 @@ class Tests {
     }
 
     @Test
+    fun `Can cut green yellow and blue wires`() {
+        val createdBomb = createNewBomb(randomPhoneNumber())
+        detonationCall(createdBomb.phoneNumber)
+
+        val greenWireCutResponse = cutWireCall(createdBomb.id, "green")
+        assertEquals(200, greenWireCutResponse.statusCode())
+
+        val yellowWireCutResponse = cutWireCall(createdBomb.id, "yellow")
+        assertEquals(200, yellowWireCutResponse.statusCode())
+
+        val blueWireCutResponse = cutWireCall(createdBomb.id, "blue")
+        assertEquals(200, blueWireCutResponse.statusCode())
+    }
+
+    @Test
+    fun `Bomb detonated when yellow wire cut first`() {
+        val createdBomb = createNewBomb(randomPhoneNumber())
+        detonationCall(createdBomb.phoneNumber)
+        val wireCutResponse = cutWireCall(createdBomb.id, "yellow")
+        assertEquals(200, wireCutResponse.statusCode())
+        assertTrue(wireCutResponse.bodyText().contains("Kaboom!"))
+        assertFalse(detonatedBombs().none { it.id == createdBomb.id })
+    }
+
+    @Test
+    fun `Bomb detonated when blue wire cut first`() {
+        val createdBomb = createNewBomb(randomPhoneNumber())
+        detonationCall(createdBomb.phoneNumber)
+        val wireCutResponse = cutWireCall(createdBomb.id, "blue")
+        assertEquals(200, wireCutResponse.statusCode())
+        assertTrue(wireCutResponse.bodyText().contains("Kaboom!"))
+        assertFalse(detonatedBombs().none { it.id == createdBomb.id })
+    }
+
+    @Test
+    fun `Bomb detonated when blue wire cut after green wire`() {
+        val createdBomb = createNewBomb(randomPhoneNumber())
+        detonationCall(createdBomb.phoneNumber)
+        cutWireCall(createdBomb.id, "green")
+        val wireCutResponse = cutWireCall(createdBomb.id, "blue")
+        assertEquals(200, wireCutResponse.statusCode())
+        assertTrue(wireCutResponse.bodyText().contains("Kaboom!"))
+        assertFalse(detonatedBombs().none { it.id == createdBomb.id })
+    }
+
+    @Test
     fun `Bomb disarmed when wires are cut in following order green yellow and blue`() {
+        val createdBomb = createNewBomb(randomPhoneNumber())
+        detonationCall(createdBomb.phoneNumber)
+
+        val greenWireCutResponse = cutWireCall(createdBomb.id, "green")
+        assertEquals(200, greenWireCutResponse.statusCode())
+        assertTrue(greenWireCutResponse.bodyText().contains("OK!"))
+
+        val yellowWireCutResponse = cutWireCall(createdBomb.id, "yellow")
+        assertEquals(200, yellowWireCutResponse.statusCode())
+        assertTrue(yellowWireCutResponse.bodyText().contains("OK!"))
+
+        val blueWireCutResponse = cutWireCall(createdBomb.id, "blue")
+        assertEquals(200, blueWireCutResponse.statusCode())
+        assertTrue(blueWireCutResponse.bodyText().contains("OK!"))
+
+        assertEquals(true, detonatedBombs().none { it.id == createdBomb.id })
     }
 
-    @Test
-    fun `Bomb explode after two seconds`() {
-    }
-
-    @Test
-    fun `Bomb explode when yellow wire is cut first`() {
-    }
-
-    @Test
-    fun `Bomb explode when blue wire is cut first`() {
-    }
-
-    @Test
-    fun `Bomb explode when green wire is cut first and then blue`() {
-
+    fun detonatedBombs(): List<Bomb> {
+        val detonatedBombsCallResponse = detonatedBombsCall()
+        assertEquals(200, detonatedBombsCallResponse.statusCode())
+        return jacksonObjectMapper().readValue(detonatedBombsCallResponse.bodyText())
     }
 
     fun createNewBombCall(phoneNumber: String): HttpResponse {
@@ -98,12 +146,27 @@ class Tests {
                 .send()
     }
 
-    fun bombIgnitionCall(phoneNumber: String): HttpResponse {
+    fun createNewBomb(phoneNumber: String): Bomb {
+        val response = createNewBombCall(phoneNumber)
+        assertEquals(201, response.statusCode())
+        return jacksonObjectMapper().readValue(response.bodyText())
+    }
+
+    fun detonationCall(phoneNumber: String): HttpResponse {
         return HttpRequest()
                 .host(host)
                 .port(port)
                 .method("PUT")
                 .path("bombs/ignite/$phoneNumber")
+                .send()
+    }
+
+    fun cutWireCall(id: Int, colour: String): HttpResponse {
+        return HttpRequest()
+                .host(host)
+                .port(port)
+                .method("PUT")
+                .path("bombs/$id/cutwire/$colour")
                 .send()
     }
 
