@@ -221,3 +221,4 @@ msbuild.wrn
 /.idea/
 /rest-api/.idea/
 /rest-api/obj/Debug/net6.0/
+/rest-api/obj/Debug/net6.0/rest-api.assets.cache
