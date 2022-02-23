@@ -1,18 +1,12 @@
 # defusing-bomb
 
-Show how different stacks can be used and tested together to defuse bomb.
+Show how different tech stacks can be tested together with Docker, TestContainer and JUnit5.
 
 ## Specs
 
 Bomb start to tick after it's initiated with phone call.
 
-Bomb disarmed when wires are cut in following order: green, yellow and blue.
-
-Bomb explode
-    after two seconds.
-    when yellow wire is cut first.
-    when blue wire is cut first.
-    when green wire is cut first and then blue.
+Bomb disarmed when wires green, yellow and blue are cut under two seconds.
 
 ## Modules
 
@@ -22,9 +16,3 @@ Bomb explode
     - Implemented with Microsoft SQL Server.
 - Module [test](test/README.md) verify rest-api end points works as expected. 
     - Implemented with Kotlin, JUnit5 and Test Container.
-
-Each module produce Docker image so the whole stack could be tested in any environment with docker engine.
-
-## How to run and test all the modules
-
-TODO
