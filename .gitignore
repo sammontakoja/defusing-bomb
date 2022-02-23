@@ -220,3 +220,4 @@ msbuild.wrn
 .vs/
 /.idea/
 /rest-api/.idea/
+/rest-api/obj/Debug/net6.0/
