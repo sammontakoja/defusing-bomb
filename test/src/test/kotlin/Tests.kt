@@ -1,15 +1,22 @@
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import jodd.http.HttpRequest
 import jodd.http.HttpResponse
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import tools.Caller
+import org.junit.jupiter.api.extension.RegisterExtension
+import tools.CallerWithDockerizedRestApi
 import java.time.LocalDateTime
 import kotlin.random.Random.Default.nextInt
 
-@Disabled
 class Tests {
+
+    companion object {
+        @JvmField
+        @RegisterExtension
+        var caller = CallerWithDockerizedRestApi()
+        //var caller = Caller() // Uncomment if you already have rest-api running
+    }
 
     @Test
     fun `Bomb created with given phone number`() {
@@ -138,10 +145,11 @@ class Tests {
     }
 
     fun createNewBombCall(phoneNumber: String): HttpResponse {
-        return Caller().call()
-                .method("POST")
-                .path("bombs/phonenumber/$phoneNumber")
-                .send()
+        return caller.call(
+                HttpRequest()
+                        .method("POST")
+                        .path("bombs/phonenumber/$phoneNumber")
+        )
     }
 
     fun createNewBomb(phoneNumber: String): Bomb {
@@ -151,27 +159,27 @@ class Tests {
     }
 
     fun detonationCall(phoneNumber: String): HttpResponse {
-        return Caller().call()
-                .method("PUT")
-                .path("bombs/ignite/$phoneNumber")
-                .send()
+        return caller.call(
+                HttpRequest()
+                        .method("PUT")
+                        .path("bombs/ignite/$phoneNumber")
+        )
     }
 
     fun cutWireCall(id: Int, colour: String): HttpResponse {
-        return Caller().call()
-                .method("PUT")
-                .path("bombs/$id/cutwire/$colour")
-                .send()
+        return caller.call(
+                HttpRequest()
+                        .method("PUT")
+                        .path("bombs/$id/cutwire/$colour")
+        )
     }
 
     fun detonatedBombsCall(): HttpResponse {
-        return Caller().call()
-                .method("GET")
-                .path("bombs/detonated")
-                .send()
+        return caller.call(
+                HttpRequest()
+                        .method("GET")
+                        .path("bombs/detonated")
+        )
     }
-
-    val host = "localhost"
-    val port = 5056
 
 }
