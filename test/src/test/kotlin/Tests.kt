@@ -5,25 +5,29 @@ import jodd.http.HttpResponse
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import tools.Caller
+import tools.CallParameterResolver
 import java.time.LocalDateTime
 import kotlin.random.Random.Default.nextInt
 
 @Disabled
+@ExtendWith(CallParameterResolver::class)
 class Tests {
 
     @Test
-    fun `Bomb created with given phone number`() {
+    fun `Bomb created with given phone number`(caller: Caller) {
         val phoneNumber = randomPhoneNumber()
-        val createdBomb = createNewBomb(phoneNumber)
+        val createdBomb = createNewBomb(phoneNumber, caller)
         assertEquals(false, createdBomb.isDetonated)
         assertEquals(phoneNumber, createdBomb.phoneNumber)
         assertEquals(null, createdBomb.detonationTime)
     }
 
     @Test
-    fun `Bomb set to explode 1-3 seconds after ignition call`() {
+    fun `Bomb set to explode 1-3 seconds after ignition call`(caller: Caller) {
         val phoneNumber = randomPhoneNumber()
-        createNewBombCall(phoneNumber)
+        createNewBombCall(phoneNumber, caller)
 
         val ignitionCallResponse = detonationCall(phoneNumber)
         val bomb: Bomb = jacksonObjectMapper().readValue(ignitionCallResponse.bodyText())
@@ -44,9 +48,9 @@ class Tests {
     }
 
     @Test
-    fun `Bomb detonated 2100 milliseconds after ignition call`() {
+    fun `Bomb detonated 2100 milliseconds after ignition call`(caller: Caller) {
         val phoneNumber = randomPhoneNumber()
-        createNewBombCall(phoneNumber)
+        createNewBombCall(phoneNumber, caller)
         detonationCall(phoneNumber)
 
         Thread.sleep(2100)
@@ -66,8 +70,8 @@ class Tests {
     }
 
     @Test
-    fun `Can cut green yellow and blue wires`() {
-        val createdBomb = createNewBomb(randomPhoneNumber())
+    fun `Can cut green yellow and blue wires`(caller: Caller) {
+        val createdBomb = createNewBomb(randomPhoneNumber(), caller)
         detonationCall(createdBomb.phoneNumber)
 
         val greenWireCutResponse = cutWireCall(createdBomb.id, "green")
@@ -81,8 +85,8 @@ class Tests {
     }
 
     @Test
-    fun `Bomb detonated when yellow wire cut first`() {
-        val createdBomb = createNewBomb(randomPhoneNumber())
+    fun `Bomb detonated when yellow wire cut first`(caller: Caller) {
+        val createdBomb = createNewBomb(randomPhoneNumber(), caller)
         detonationCall(createdBomb.phoneNumber)
         val wireCutResponse = cutWireCall(createdBomb.id, "yellow")
         assertEquals(200, wireCutResponse.statusCode())
@@ -91,8 +95,8 @@ class Tests {
     }
 
     @Test
-    fun `Bomb detonated when blue wire cut first`() {
-        val createdBomb = createNewBomb(randomPhoneNumber())
+    fun `Bomb detonated when blue wire cut first`(caller: Caller) {
+        val createdBomb = createNewBomb(randomPhoneNumber(), caller)
         detonationCall(createdBomb.phoneNumber)
         val wireCutResponse = cutWireCall(createdBomb.id, "blue")
         assertEquals(200, wireCutResponse.statusCode())
@@ -101,8 +105,8 @@ class Tests {
     }
 
     @Test
-    fun `Bomb detonated when blue wire cut after green wire`() {
-        val createdBomb = createNewBomb(randomPhoneNumber())
+    fun `Bomb detonated when blue wire cut after green wire`(caller: Caller) {
+        val createdBomb = createNewBomb(randomPhoneNumber(), caller)
         detonationCall(createdBomb.phoneNumber)
         cutWireCall(createdBomb.id, "green")
         val wireCutResponse = cutWireCall(createdBomb.id, "blue")
@@ -112,8 +116,8 @@ class Tests {
     }
 
     @Test
-    fun `Bomb disarmed when wires are cut in following order green yellow and blue`() {
-        val createdBomb = createNewBomb(randomPhoneNumber())
+    fun `Bomb disarmed when wires are cut in following order green yellow and blue`(caller: Caller) {
+        val createdBomb = createNewBomb(randomPhoneNumber(), caller)
         detonationCall(createdBomb.phoneNumber)
 
         val greenWireCutResponse = cutWireCall(createdBomb.id, "green")
@@ -137,17 +141,15 @@ class Tests {
         return jacksonObjectMapper().readValue(detonatedBombsCallResponse.bodyText())
     }
 
-    fun createNewBombCall(phoneNumber: String): HttpResponse {
-        return HttpRequest()
-                .host(host)
-                .port(port)
+    fun createNewBombCall(phoneNumber: String, caller: Caller): HttpResponse {
+        return caller.call()
                 .method("POST")
                 .path("bombs/phonenumber/$phoneNumber")
                 .send()
     }
 
-    fun createNewBomb(phoneNumber: String): Bomb {
-        val response = createNewBombCall(phoneNumber)
+    fun createNewBomb(phoneNumber: String, caller: Caller): Bomb {
+        val response = createNewBombCall(phoneNumber, caller)
         assertEquals(201, response.statusCode())
         return jacksonObjectMapper().readValue(response.bodyText())
     }
